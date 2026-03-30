@@ -1,0 +1,62 @@
+classDiagram
+    class Task {
+        +str title
+        +int duration_minutes
+        +str priority
+        +str description
+        +str preferred_time
+        +str frequency
+        +bool required
+        +bool completed
+        +date due_date
+        +is_high_priority() bool
+        +mark_complete() None
+        +reset_completion() None
+        +is_recurring() bool
+        +create_next_instance() Optional~Task~
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +int age
+        +List~Task~ tasks
+        +add_task(task) None
+        +remove_task(task_title) None
+        +get_tasks() List~Task~
+        +get_incomplete_tasks() List~Task~
+    }
+
+    class Owner {
+        +str name
+        +int available_minutes
+        +List~str~ preferences
+        +List~Pet~ pets
+        +add_preference(pref) None
+        +update_available_minutes(minutes) None
+        +add_pet(pet) None
+        +remove_pet(pet_name) None
+        +get_all_incomplete_tasks() List~Task~
+        +get_all_tasks() List~Task~
+        +get_pets() List~Pet~
+    }
+
+    class Scheduler {
+        +get_all_tasks_for_owner(owner) List~Task~
+        +build_daily_plan(owner, pet) List~Task~
+        +mark_task_complete(pet, task) Optional~Task~
+        +sort_by_time(tasks) List~Task~
+        +detect_time_conflicts(owner, include_completed) List~str~
+        +filter_tasks(owner, completed, pet_name) List~Task~
+        +rank_tasks(tasks, owner) List~Task~
+        +score_task(task, owner) int
+        +explain_plan(plan) str
+        -_time_sort_key(time_str) Tuple~int,int,int~
+    }
+
+    Owner "1" o-- "0..*" Pet : owns
+    Pet "1" *-- "0..*" Task : contains
+    Scheduler ..> Owner : queries constraints
+    Scheduler ..> Pet : reads and updates tasks
+    Scheduler ..> Task : ranks and orders
+    Task ..> Task : creates recurring instance

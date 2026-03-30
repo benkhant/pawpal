@@ -44,6 +44,10 @@ st.subheader("Owner Setup")
 # Persist Owner object across reruns.
 if "owner" not in st.session_state:
     st.session_state.owner = Owner(name="Jordan", available_minutes=120)
+if "scheduler" not in st.session_state:
+    st.session_state.scheduler = Scheduler()
+
+scheduler = st.session_state.scheduler
 
 owner_col1, owner_col2 = st.columns(2)
 with owner_col1:
@@ -89,13 +93,15 @@ else:
     selected_pet = next(p for p in pets if p.name == selected_pet_name)
 
     with st.form("add_task_form"):
-        task_col1, task_col2, task_col3 = st.columns(3)
+        task_col1, task_col2, task_col3, task_col4 = st.columns(4)
         with task_col1:
             task_title = st.text_input("Task title", value="Morning walk")
         with task_col2:
             duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
         with task_col3:
             priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
+        with task_col4:
+            preferred_time = st.text_input("Preferred time (HH:MM)", value="")
 
         task_description = st.text_input("Description", value="")
         task_required = st.checkbox("Required task", value=False)
@@ -110,18 +116,61 @@ else:
                     duration_minutes=int(duration),
                     priority=priority,
                     description=task_description.strip(),
+                    preferred_time=preferred_time.strip(),
                     required=task_required,
                 )
                 selected_pet.add_task(new_task)
                 st.success(f"Added task '{new_task.title}' to {selected_pet.name}")
 
     st.write(f"**{selected_pet.name}'s Tasks**")
-    if selected_pet.get_tasks():
-        for task in selected_pet.get_tasks():
-            status = "Completed" if task.completed else "Pending"
-            st.write(f"- {task.title} ({task.duration_minutes} min, {task.priority}, {status})")
+    status_filter_label = st.selectbox(
+        "Task status",
+        ["All", "Pending", "Completed"],
+        index=0,
+    )
+
+    completed_filter = None
+    if status_filter_label == "Pending":
+        completed_filter = False
+    elif status_filter_label == "Completed":
+        completed_filter = True
+
+    filtered_tasks = scheduler.filter_tasks(
+        st.session_state.owner,
+        completed=completed_filter,
+        pet_name=selected_pet.name,
+    )
+    sorted_tasks = scheduler.sort_by_time(filtered_tasks)
+
+    if sorted_tasks:
+        table_rows = []
+        for task in sorted_tasks:
+            table_rows.append(
+                {
+                    "Preferred Time": task.preferred_time or "Any time",
+                    "Task": task.title,
+                    "Duration (min)": task.duration_minutes,
+                    "Priority": task.priority.title(),
+                    "Required": "Yes" if task.required else "No",
+                    "Status": "Completed" if task.completed else "Pending",
+                }
+            )
+
+        st.table(table_rows)
     else:
-        st.info("No tasks for this pet yet.")
+        st.info("No tasks match this filter yet.")
+
+    conflict_warnings = scheduler.detect_time_conflicts(st.session_state.owner)
+    st.markdown("### Conflict Check")
+    if conflict_warnings:
+        st.warning(
+            "Potential time conflicts detected. These tasks are booked at the same time and may be hard to complete."
+        )
+        for warning_message in conflict_warnings:
+            st.warning(warning_message)
+        st.info("Tip: adjust one conflicting task's preferred time so care steps do not overlap.")
+    else:
+        st.success("No time conflicts detected for pending tasks.")
 
 st.divider()
 
@@ -129,11 +178,22 @@ st.subheader("Build Schedule")
 st.caption("Generate a prioritized daily plan across all pets based on available time and task priorities.")
 
 if st.button("Generate schedule"):
-    scheduler = Scheduler()
     schedule = scheduler.build_daily_plan(st.session_state.owner)
 
     if schedule:
         st.success("Schedule generated!")
+        schedule_rows = []
+        for task in schedule:
+            schedule_rows.append(
+                {
+                    "Task": task.title,
+                    "Preferred Time": task.preferred_time or "Any time",
+                    "Duration (min)": task.duration_minutes,
+                    "Priority": task.priority.title(),
+                    "Required": "Yes" if task.required else "No",
+                }
+            )
+        st.table(schedule_rows)
         st.text(scheduler.explain_plan(schedule))
     else:
         st.warning("No incomplete tasks to schedule. Add pets and tasks above first.")

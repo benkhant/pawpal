@@ -17,43 +17,67 @@ Here is the Mermaid.js class diagram representing this design:
 
 ```mermaid
 classDiagram
-	class Owner {
-		+String name
-		+int availableMinutes
-		+List~String~ preferences
-		+addPreference(pref)
-		+updateAvailableMinutes(minutes)
+	class Task {
+		+str title
+		+int duration_minutes
+		+str priority
+		+str description
+		+str preferred_time
+		+str frequency
+		+bool required
+		+bool completed
+		+date due_date
+		+is_high_priority() bool
+		+mark_complete() None
+		+reset_completion() None
+		+is_recurring() bool
+		+create_next_instance() Optional~Task~
 	}
 
 	class Pet {
-		+String name
-		+String species
+		+str name
+		+str species
 		+int age
 		+List~Task~ tasks
-		+addTask(task)
-		+removeTask(taskTitle)
+		+add_task(task) None
+		+remove_task(task_title) None
+		+get_tasks() List~Task~
+		+get_incomplete_tasks() List~Task~
 	}
 
-	class Task {
-		+String title
-		+int durationMinutes
-		+String priority
-		+String preferredTime
-		+bool required
-		+isHighPriority() bool
+	class Owner {
+		+str name
+		+int available_minutes
+		+List~str~ preferences
+		+List~Pet~ pets
+		+add_preference(pref) None
+		+update_available_minutes(minutes) None
+		+add_pet(pet) None
+		+remove_pet(pet_name) None
+		+get_all_incomplete_tasks() List~Task~
+		+get_all_tasks() List~Task~
+		+get_pets() List~Pet~
 	}
 
 	class Scheduler {
-		+buildDailyPlan(owner, pet) List~Task~
-		+scoreTask(task, owner) int
-		+explainPlan(plan) String
+		+get_all_tasks_for_owner(owner) List~Task~
+		+build_daily_plan(owner, pet) List~Task~
+		+mark_task_complete(pet, task) Optional~Task~
+		+sort_by_time(tasks) List~Task~
+		+detect_time_conflicts(owner, include_completed) List~str~
+		+filter_tasks(owner, completed, pet_name) List~Task~
+		+rank_tasks(tasks, owner) List~Task~
+		+score_task(task, owner) int
+		+explain_plan(plan) str
+		-_time_sort_key(time_str) Tuple~int,int,int~
 	}
 
-	Owner "1" --> "1..*" Pet : manages
-	Pet "1" --> "0..*" Task : has
-	Scheduler ..> Owner : reads constraints
-	Scheduler ..> Pet : reads tasks
-	Scheduler ..> Task : prioritizes
+	Owner "1" o-- "0..*" Pet : owns
+	Pet "1" *-- "0..*" Task : contains
+	Scheduler ..> Owner : queries constraints
+	Scheduler ..> Pet : reads and updates tasks
+	Scheduler ..> Task : ranks and orders
+	Task ..> Task : creates recurring instance
 ```
 
 **Core user actions**
@@ -79,8 +103,21 @@ I made these changes to keep the design consistent, easier to maintain, and bett
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+My scheduler currently considers the following constraints:
+
+- **Priority level** (`high`, `medium`, `low`) as the main urgency signal.
+- **Required status** (`required=True`) to protect must-do care tasks.
+- **Owner time budget** (`available_minutes`) so shorter, feasible tasks are favored.
+- **Preferred time format** (`HH:MM`) for chronological sorting and conflict checks.
+- **Completion status** (`completed`) so finished tasks are excluded from daily planning.
+
+I treated constraints in this order because the app is a daily practical tool for pet care:
+
+1. Health/safety first (`high` + `required` tasks).
+2. Feasibility second (tasks that fit the owner's available time).
+3. Convenience third (preferred time ordering and conflict visibility).
+
+This is why `score_task()` heavily rewards priority and required tasks, while still giving a bonus to tasks that fit available minutes.
 
 **b. Tradeoffs**
 
@@ -94,13 +131,43 @@ This tradeoff is reasonable for this project stage because it keeps the algorith
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used VS Code Copilot in three main ways:
+
+- **Design check:** I used chat to compare UML intent with implementation and identify missing relationships/methods.
+- **Implementation support:** I used targeted prompts against specific files to add features in increments (sorting, conflict warnings, recurrence).
+- **UI integration and docs:** I used Copilot to wire scheduler methods into Streamlit and then update README/diagram artifacts to match final code.
+
+The most effective Copilot features for building the scheduler were:
+
+- `#file:pawpal_system.py` prompts to reason about class responsibilities and method placement.
+- `#codebase` prompts to align README feature claims with actual implemented algorithms.
+- Fast iterative code edits with immediate test feedback (`pytest`) to validate each suggestion.
+
+The most helpful prompts were specific and constraint-based, for example:
+
+- "Review this file for missing relationships and scaling bottlenecks."
+- "Use existing Scheduler methods in the UI instead of duplicating logic."
+- "Update the UML so it matches the final implementation exactly."
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+One clear moment where I did not accept an AI suggestion as-is was conflict detection logic style. I reviewed a denser, more compact approach, but kept the explicit loop-based version because it was easier to read, debug, and explain for this course project.
+
+I evaluated AI suggestions with a simple rule: if it improves correctness and maintainability without hiding logic, I keep it. If it adds unnecessary cleverness, I simplify it.
+
+I verified suggestions by:
+
+- running `python -m pytest` after each meaningful change,
+- checking that README/UML matched real class methods,
+- and validating behavior from the Streamlit UI (sorting, filtering, conflict warnings, schedule generation).
+
+Using separate chat sessions for different phases helped me stay organized:
+
+- **Phase 1:** architecture/UML decisions,
+- **Phase 2:** backend logic and tests,
+- **Phase 3:** UI integration and documentation polish.
+
+This separation prevented context mixing and made each session goal-focused.
 
 ---
 
@@ -108,13 +175,27 @@ This tradeoff is reasonable for this project stage because it keeps the algorith
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+I tested the highest-risk scheduler behaviors:
+
+- task completion and reset behavior,
+- adding/removing tasks from pets,
+- chronological sorting with valid/invalid preferred times,
+- recurring task rollover for daily and weekly frequencies,
+- and same-time conflict warnings for both same-pet and cross-pet cases.
+
+These tests are important because they protect the core user value of the app: a reliable, understandable plan that does not silently lose tasks or produce misleading order/conflict outputs.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+I am reasonably confident in the current behavior for the implemented scope because tests cover core logic paths and pass consistently.
+
+If I had more time, I would add edge-case tests for:
+
+- true time-overlap conflicts using task durations (not just exact same start time),
+- tie-breaking rules when scores are equal,
+- invalid time strings entered through UI with stricter validation,
+- very large task lists (performance and stability),
+- and recurrence across date boundaries/time zones.
 
 ---
 
@@ -122,12 +203,12 @@ This tradeoff is reasonable for this project stage because it keeps the algorith
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+I am most satisfied with keeping the architecture clean while still shipping useful features end-to-end: UML -> backend -> tests -> Streamlit UI -> documentation.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+In another iteration, I would redesign conflict detection to account for duration-based overlaps and add task editing/deletion directly in the UI. I would also add stronger input validation for preferred time and potentially move from string times to a stricter time type.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+My key takeaway is that AI is most valuable when I act as the **lead architect**: I define boundaries, constraints, and quality checks, then use Copilot to accelerate implementation details. The best results came from clear prompts, phased workflow, and verification discipline rather than accepting generated code blindly.
