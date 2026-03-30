@@ -67,7 +67,7 @@ Current tests verify:
 
 ## 📸 Demo
 
-<a href="/course_images/ai110/pawpal_app_screenshot.png" target="_blank"><img src='/course_images/ai110/pawpal_app_screenshot.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>
+[![PawPal App](pawpal_app_screenshot.png)](pawpal_app_screenshot.png)
 
 ## UML
 
