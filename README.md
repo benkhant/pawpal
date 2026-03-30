@@ -50,3 +50,15 @@ Recent scheduler improvements include:
 - Flexible filtering with `filter_tasks()` by completion status and pet name.
 - Recurring task rollover where `daily` and `weekly` tasks create the next due instance when completed.
 - Lightweight conflict detection with `detect_time_conflicts()` that returns warnings for exact same-time collisions across one or multiple pets.
+
+## Testing PawPal+
+
+Run the automated tests with:
+
+```bash
+python -m pytest
+```
+
+Current tests cover key scheduling behaviors including task completion/reset, adding/removing pet tasks, chronological sorting by preferred time, recurring task rollover for daily/weekly frequencies, and duplicate-time conflict detection for same-pet and cross-pet scenarios.
+
+Confidence Level: 4/5 stars

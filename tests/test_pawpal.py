@@ -164,6 +164,38 @@ class TestRecurringTaskCompletion:
         assert len(dog.get_tasks()) == 1
 
 
+class TestSorting:
+    """Test chronological task sorting behavior."""
+
+    def test_sorting_returns_tasks_in_chronological_order(self):
+        scheduler = Scheduler()
+
+        tasks = [
+            Task(title="Evening walk", duration_minutes=30, priority="medium", preferred_time="18:00"),
+            Task(title="Breakfast", duration_minutes=10, priority="high", preferred_time="07:00"),
+            Task(title="Medication", duration_minutes=5, priority="high", preferred_time="08:30"),
+        ]
+
+        sorted_tasks = scheduler.sort_by_time(tasks)
+
+        assert [task.title for task in sorted_tasks] == ["Breakfast", "Medication", "Evening walk"]
+
+    def test_sorting_puts_invalid_or_empty_times_last(self):
+        scheduler = Scheduler()
+
+        tasks = [
+            Task(title="No time", duration_minutes=10, priority="low", preferred_time=""),
+            Task(title="Bad format", duration_minutes=10, priority="low", preferred_time="7-30"),
+            Task(title="Valid early", duration_minutes=10, priority="high", preferred_time="06:45"),
+            Task(title="Valid later", duration_minutes=10, priority="medium", preferred_time="09:00"),
+        ]
+
+        sorted_tasks = scheduler.sort_by_time(tasks)
+
+        assert [task.title for task in sorted_tasks[:2]] == ["Valid early", "Valid later"]
+        assert set(task.title for task in sorted_tasks[2:]) == {"No time", "Bad format"}
+
+
 class TestConflictDetection:
     """Test lightweight time conflict warning behavior."""
 
@@ -198,3 +230,16 @@ class TestConflictDetection:
         assert len(warnings) == 1
         assert "different pets" in warnings[0]
         assert "08:30" in warnings[0]
+
+    def test_no_conflict_when_times_are_unique(self):
+        scheduler = Scheduler()
+        owner = Owner(name="Alice", available_minutes=120)
+        dog = Pet(name="Buddy", species="dog", age=5)
+
+        dog.add_task(Task(title="Walk", duration_minutes=20, priority="high", preferred_time="07:00"))
+        dog.add_task(Task(title="Feed", duration_minutes=10, priority="high", preferred_time="08:00"))
+        owner.add_pet(dog)
+
+        warnings = scheduler.detect_time_conflicts(owner)
+
+        assert warnings == []
