@@ -84,8 +84,9 @@ I made these changes to keep the design consistent, easier to maintain, and bett
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+One tradeoff in my scheduler is conflict detection: it only flags tasks that share the exact same `preferred_time` string (for example, both at `08:30`). It does not yet calculate overlap by duration (for example, `08:30-09:00` colliding with `08:45-09:15`).
+
+This tradeoff is reasonable for this project stage because it keeps the algorithm lightweight, easy to test, and easy to understand while still catching obvious clashes. I reviewed a more compact Pythonic rewrite, but I kept the clearer loop-based version because it is easier for humans to read and maintain in a student project.
 
 ---
 

@@ -1,4 +1,5 @@
 import pytest
+from datetime import date, timedelta
 from pawpal_system import Task, Pet, Owner, Scheduler
 
 
@@ -95,3 +96,105 @@ class TestTaskAddition:
         
         # The remaining task should be the second one
         assert pet.get_tasks()[0].title == "Play with the cat"
+
+
+class TestRecurringTaskCompletion:
+    """Test recurring task generation after completion."""
+
+    def test_daily_task_creates_next_day_instance(self):
+        scheduler = Scheduler()
+        dog = Pet(name="Buddy", species="dog", age=5)
+        today = date(2026, 3, 29)
+
+        daily_task = Task(
+            title="Feed Buddy",
+            duration_minutes=15,
+            priority="high",
+            frequency="daily",
+            due_date=today,
+        )
+        dog.add_task(daily_task)
+
+        next_task = scheduler.mark_task_complete(dog, daily_task)
+
+        assert daily_task.completed is True
+        assert next_task is not None
+        assert next_task.due_date == today + timedelta(days=1)
+        assert next_task.completed is False
+        assert len(dog.get_tasks()) == 2
+
+    def test_weekly_task_creates_next_week_instance(self):
+        scheduler = Scheduler()
+        cat = Pet(name="Whiskers", species="cat", age=3)
+        today = date(2026, 3, 29)
+
+        weekly_task = Task(
+            title="Deep clean litter box",
+            duration_minutes=20,
+            priority="medium",
+            frequency="weekly",
+            due_date=today,
+        )
+        cat.add_task(weekly_task)
+
+        next_task = scheduler.mark_task_complete(cat, weekly_task)
+
+        assert weekly_task.completed is True
+        assert next_task is not None
+        assert next_task.due_date == today + timedelta(weeks=1)
+        assert next_task.completed is False
+        assert len(cat.get_tasks()) == 2
+
+    def test_non_recurring_task_does_not_create_next_instance(self):
+        scheduler = Scheduler()
+        dog = Pet(name="Buddy", species="dog", age=5)
+
+        one_time_task = Task(
+            title="Vet appointment",
+            duration_minutes=45,
+            priority="high",
+            frequency="once",
+        )
+        dog.add_task(one_time_task)
+
+        next_task = scheduler.mark_task_complete(dog, one_time_task)
+
+        assert one_time_task.completed is True
+        assert next_task is None
+        assert len(dog.get_tasks()) == 1
+
+
+class TestConflictDetection:
+    """Test lightweight time conflict warning behavior."""
+
+    def test_detects_same_pet_conflict(self):
+        scheduler = Scheduler()
+        owner = Owner(name="Alice", available_minutes=120)
+        dog = Pet(name="Buddy", species="dog", age=5)
+
+        dog.add_task(Task(title="Walk", duration_minutes=20, priority="high", preferred_time="07:00"))
+        dog.add_task(Task(title="Brush", duration_minutes=10, priority="low", preferred_time="07:00"))
+        owner.add_pet(dog)
+
+        warnings = scheduler.detect_time_conflicts(owner)
+
+        assert len(warnings) == 1
+        assert "same pet" in warnings[0]
+        assert "07:00" in warnings[0]
+
+    def test_detects_different_pet_conflict(self):
+        scheduler = Scheduler()
+        owner = Owner(name="Alice", available_minutes=120)
+        dog = Pet(name="Buddy", species="dog", age=5)
+        cat = Pet(name="Whiskers", species="cat", age=3)
+
+        dog.add_task(Task(title="Feed dog", duration_minutes=15, priority="high", preferred_time="08:30"))
+        cat.add_task(Task(title="Clean litter", duration_minutes=10, priority="medium", preferred_time="08:30"))
+        owner.add_pet(dog)
+        owner.add_pet(cat)
+
+        warnings = scheduler.detect_time_conflicts(owner)
+
+        assert len(warnings) == 1
+        assert "different pets" in warnings[0]
+        assert "08:30" in warnings[0]
