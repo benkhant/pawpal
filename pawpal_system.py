@@ -95,11 +95,7 @@ class Scheduler:
         return owner.get_all_incomplete_tasks()
 
     def build_daily_plan(self, owner: Owner, pet: Pet = None) -> List[Task]:
-        """Build an ordered daily plan from owner constraints and pet tasks.
-        
-        If pet is specified, plan only that pet's tasks.
-        If pet is None, plan all tasks across all owner's pets.
-        """
+        """Build an ordered daily plan ranked by priority and owner constraints."""
         if pet:
             tasks = pet.get_incomplete_tasks()
         else:
@@ -119,11 +115,7 @@ class Scheduler:
         return [task for task, score in scored_tasks]
 
     def score_task(self, task: Task, owner: Owner) -> int:
-        """Calculate a ranking score for a task based on priority and constraints.
-        
-        High priority and required tasks score higher.
-        Tasks that fit within available time get a bonus.
-        """
+        """Calculate a ranking score based on priority, required status, and available time."""
         score = 0
         
         # Priority-based scoring
