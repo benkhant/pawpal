@@ -4,12 +4,16 @@
 
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+My initial UML design focused on four core classes with clear responsibilities so the logic layer stays modular and easy to test.
 
-I am designing PawPal+, a pet care app, around four main classes: `Owner`, `Pet`, `Task`, and `Scheduler`.
+- `Task` represents one care activity (for example feeding, walk, medication). It stores duration, priority, preferred time, and whether the task is required.
+- `Pet` represents a single animal profile and owns the list of tasks that belong to that pet.
+- `Owner` represents the person using the app and stores scheduling constraints such as available time and personal preferences.
+- `Scheduler` is the decision-making class. It reads owner constraints and pet tasks, ranks tasks by importance/fit, and produces the final daily plan plus a short explanation.
 
-I used Copilot to draft this Mermaid.js class diagram from my brainstormed attributes and methods:
+The relationship model in the UML is: one owner manages one or more pets, each pet has zero or more tasks, and the scheduler depends on owner/pet/task data when generating the plan.
+
+Here is the Mermaid.js class diagram representing this design:
 
 ```mermaid
 classDiagram
@@ -60,8 +64,14 @@ classDiagram
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+Yes. I asked Copilot to review `#file:pawpal_system.py` for missing relationships and potential logic bottlenecks.
+
+Based on that review, I made two refinements:
+
+- I added the missing `Owner -> Pet` relationship in code by adding `pets` to `Owner` plus `add_pet` and `remove_pet` method stubs. This change keeps the implementation consistent with the UML association (`Owner "1" --> "1..*" Pet`).
+- I added a `rank_tasks` method stub in `Scheduler` so task scoring/sorting can be centralized. The goal is to avoid scattering repeated scoring logic across multiple scheduling paths, which could become a bottleneck as task counts grow.
+
+I made these changes to keep the design consistent, easier to maintain, and better prepared for scaling beyond a single pet or a very small task list.
 
 ---
 
