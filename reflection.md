@@ -7,6 +7,57 @@
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
+I am designing PawPal+, a pet care app, around four main classes: `Owner`, `Pet`, `Task`, and `Scheduler`.
+
+I used Copilot to draft this Mermaid.js class diagram from my brainstormed attributes and methods:
+
+```mermaid
+classDiagram
+	class Owner {
+		+String name
+		+int availableMinutes
+		+List~String~ preferences
+		+addPreference(pref)
+		+updateAvailableMinutes(minutes)
+	}
+
+	class Pet {
+		+String name
+		+String species
+		+int age
+		+List~Task~ tasks
+		+addTask(task)
+		+removeTask(taskTitle)
+	}
+
+	class Task {
+		+String title
+		+int durationMinutes
+		+String priority
+		+String preferredTime
+		+bool required
+		+isHighPriority() bool
+	}
+
+	class Scheduler {
+		+buildDailyPlan(owner, pet) List~Task~
+		+scoreTask(task, owner) int
+		+explainPlan(plan) String
+	}
+
+	Owner "1" --> "1..*" Pet : manages
+	Pet "1" --> "0..*" Task : has
+	Scheduler ..> Owner : reads constraints
+	Scheduler ..> Pet : reads tasks
+	Scheduler ..> Task : prioritizes
+```
+
+**Core user actions**
+
+- A user should be able to add and manage pet profiles so the system knows which pet needs care and what kind of care is appropriate.
+- A user should be able to create and prioritize daily care tasks (like feeding, walks, medication, or playtime) with time estimates.
+- A user should be able to generate and view today’s plan in order, so they can quickly see what to do next and when.
+
 **b. Design changes**
 
 - Did your design change during implementation?
